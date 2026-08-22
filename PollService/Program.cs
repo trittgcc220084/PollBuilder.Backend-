@@ -38,7 +38,7 @@ builder.Services.AddCors(options =>
 });
 
 // Lấy Secret Key chuẩn (Đồng bộ tuyệt đối với AccountService)
-var jwtSecretKey = builder.Configuration["Jwt:Key"] 
+var jwtSecretKey = builder.Configuration["Jwt:Key"]
     ?? "MotDoanMaBaoMatRatDaiVaKhoDoanChoPollBuilder123!@#";
 
 // Cấu hình JWT Authentication
@@ -51,11 +51,11 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         {
             ValidateIssuerSigningKey = true,
             IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSecretKey)),
-            
+
             // Tắt kiểm tra Issuer, Audience & Lifetime để loại trừ lỗi tên miền và lệch múi giờ trên Render
             ValidateIssuer = false,
             ValidateAudience = false,
-            ValidateLifetime = false, 
+            ValidateLifetime = false,
             ClockSkew = TimeSpan.Zero
         };
 
@@ -78,6 +78,21 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 builder.Services.AddAuthorization();
 
 var app = builder.Build();
+
+// Tự động tạo cấu trúc bảng trong Database (giống AccountService)
+using (var scope = app.Services.CreateScope())
+{
+    try
+    {
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        db.Database.EnsureCreated();
+        Console.WriteLine("✅ Hệ thống kiểm tra Database (PollService) thành công.");
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"⚠️ Cảnh báo khởi tạo cấu trúc DB (PollService): {ex.Message}");
+    }
+}
 
 // Swagger UI
 if (app.Environment.IsDevelopment())
