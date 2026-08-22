@@ -36,10 +36,14 @@ namespace AccountService.Controllers
                     return BadRequest(new { message = "Email này đã được đăng ký." });
                 }
 
+                // 👉 BĂM MẬT KHẨU BẰNG BCRYPT TRƯỚC KHI LƯU VÀO DB
+                string salt = BCrypt.Net.BCrypt.GenerateSalt(11);
+                string hashedPassword = BCrypt.Net.BCrypt.HashPassword(model.Password, salt);
+
                 var user = new User
                 {
                     Email = model.Email.Trim(),
-                    PasswordHash = model.Password, // Đang lưu chuỗi thô
+                    PasswordHash = hashedPassword,
                     CreatedAt = DateTime.UtcNow
                 };
 
@@ -67,12 +71,10 @@ namespace AccountService.Controllers
                 }
 
                 string inputEmail = model.Email.Trim();
-                string inputPassword = model.Password;
-
-                // Tìm User theo Email trước để tránh lỗi so sánh null trực tiếp trong câu lệnh EF
                 var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == inputEmail);
 
-                if (user == null || string.IsNullOrEmpty(user.PasswordHash) || user.PasswordHash != inputPassword)
+                // 👉 SỬ DỤNG HÀM VERIFY CHUẨN ĐỂ KIỂM TRA MẬT KHẨU BĂM
+                if (user == null || string.IsNullOrEmpty(user.PasswordHash) || !BCrypt.Net.BCrypt.Verify(model.Password, user.PasswordHash))
                 {
                     return Unauthorized(new { message = "Email hoặc Mật khẩu không chính xác." });
                 }
