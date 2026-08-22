@@ -51,7 +51,7 @@ namespace AccountService.Controllers
                 await _context.SaveChangesAsync();
 
                 var token = GenerateJwtToken(user);
-                return Ok(new { token = token, Token = token, userId = user.Id, email = user.Email });
+                return Ok(new { token = token, userId = user.Id, email = user.Email });
             }
             catch (Exception ex)
             {
@@ -80,7 +80,7 @@ namespace AccountService.Controllers
                 }
 
                 var token = GenerateJwtToken(user);
-                return Ok(new { token = token, Token = token, userId = user.Id, email = user.Email });
+                return Ok(new { token = token, userId = user.Id, email = user.Email });
             }
             catch (Exception ex)
             {
