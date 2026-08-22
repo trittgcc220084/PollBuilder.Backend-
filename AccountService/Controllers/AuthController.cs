@@ -23,49 +23,68 @@ namespace AccountService.Controllers
         [HttpPost("register")]
         public async Task<IActionResult> Register([FromBody] RegisterRequest model)
         {
-            if (string.IsNullOrWhiteSpace(model.Email) || string.IsNullOrWhiteSpace(model.Password))
+            try
             {
-                return BadRequest(new { message = "Email và Mật khẩu không được để trống." });
+                if (string.IsNullOrWhiteSpace(model.Email) || string.IsNullOrWhiteSpace(model.Password))
+                {
+                    return BadRequest(new { message = "Email và Mật khẩu không được để trống." });
+                }
+
+                var existingUser = await _context.Users.FirstOrDefaultAsync(u => u.Email == model.Email.Trim());
+                if (existingUser != null)
+                {
+                    return BadRequest(new { message = "Email này đã được đăng ký." });
+                }
+
+                var user = new User
+                {
+                    Email = model.Email.Trim(),
+                    PasswordHash = model.Password, // Đang lưu chuỗi thô
+                    CreatedAt = DateTime.UtcNow
+                };
+
+                _context.Users.Add(user);
+                await _context.SaveChangesAsync();
+
+                var token = GenerateJwtToken(user);
+                return Ok(new { token = token, Token = token, userId = user.Id, email = user.Email });
             }
-
-            var existingUser = await _context.Users.FirstOrDefaultAsync(u => u.Email == model.Email);
-            if (existingUser != null)
+            catch (Exception ex)
             {
-                return BadRequest(new { message = "Email này đã được đăng ký." });
+                Console.WriteLine($"❌ Lỗi Đăng ký: {ex.Message}");
+                return StatusCode(500, new { message = "Lỗi hệ thống khi đăng ký.", detail = ex.Message });
             }
-
-            var user = new User
-            {
-                Email = model.Email.Trim(),
-                PasswordHash = model.Password,
-                CreatedAt = DateTime.UtcNow
-            };
-
-            _context.Users.Add(user);
-            await _context.SaveChangesAsync();
-
-            var token = GenerateJwtToken(user);
-            return Ok(new { token = token, Token = token, userId = user.Id, email = user.Email });
         }
 
         [HttpPost("login")]
         public async Task<IActionResult> Login([FromBody] LoginRequest model)
         {
-            if (string.IsNullOrWhiteSpace(model.Email) || string.IsNullOrWhiteSpace(model.Password))
+            try
             {
-                return BadRequest(new { message = "Email và Mật khẩu không được để trống." });
+                if (string.IsNullOrWhiteSpace(model.Email) || string.IsNullOrWhiteSpace(model.Password))
+                {
+                    return BadRequest(new { message = "Email và Mật khẩu không được để trống." });
+                }
+
+                string inputEmail = model.Email.Trim();
+                string inputPassword = model.Password;
+
+                // Tìm User theo Email trước để tránh lỗi so sánh null trực tiếp trong câu lệnh EF
+                var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == inputEmail);
+
+                if (user == null || string.IsNullOrEmpty(user.PasswordHash) || user.PasswordHash != inputPassword)
+                {
+                    return Unauthorized(new { message = "Email hoặc Mật khẩu không chính xác." });
+                }
+
+                var token = GenerateJwtToken(user);
+                return Ok(new { token = token, Token = token, userId = user.Id, email = user.Email });
             }
-
-            var user = await _context.Users
-                .FirstOrDefaultAsync(u => u.Email == model.Email.Trim() && u.PasswordHash == model.Password);
-
-            if (user == null)
+            catch (Exception ex)
             {
-                return Unauthorized(new { message = "Email hoặc Mật khẩu không chính xác." });
+                Console.WriteLine($"❌ Lỗi Đăng nhập: {ex.Message}");
+                return StatusCode(500, new { message = "Lỗi hệ thống khi đăng nhập.", detail = ex.Message });
             }
-
-            var token = GenerateJwtToken(user);
-            return Ok(new { token = token, Token = token, userId = user.Id, email = user.Email });
         }
 
         private string GenerateJwtToken(User user)
