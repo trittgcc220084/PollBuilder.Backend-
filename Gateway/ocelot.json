@@ -5,7 +5,7 @@
             "DownstreamScheme": "https",
             "DownstreamHostAndPorts": [
                 {
-                    "Host": "pollbuilder-pollservice-98x5.onrender.com",
+                    "Host": "pollbuilder-poll-fhbp.onrender.com",
                     "Port": 443
                 }
             ],
