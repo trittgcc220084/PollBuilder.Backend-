@@ -21,5 +21,11 @@ RUN dotnet publish "AccountService.csproj" -c $BUILD_CONFIGURATION -o /app/publi
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS final
 WORKDIR /app
 EXPOSE 8080
+
+# ĐƯA LỆNH CÀI ĐẶT THƯ VIỆN LÊN ĐÂY (TRƯỚC KHI COPY VÀ CHẠY ỨNG DỤNG)
+RUN apt-get update && apt-get install -y \
+    libgssapi-krb5-2 \
+    && rm -rf /var/lib/apt/lists/*
+
 COPY --from=publish /app/publish .
 ENTRYPOINT ["dotnet", "AccountService.dll"]
