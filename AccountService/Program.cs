@@ -76,4 +76,4 @@ app.MapControllers();
 
 // Cấu hình cổng Port linh hoạt theo môi trường Render Container
 var port = Environment.GetEnvironmentVariable("PORT") ?? "8080";
-app.Run($"http://0.0.0:{port}");
+app.Run($"http://0.0.0.0:{port}");

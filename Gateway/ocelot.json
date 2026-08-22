@@ -18,7 +18,7 @@
             "DownstreamScheme": "https",
             "DownstreamHostAndPorts": [
                 {
-                    "Host": "pollbuilder-pollservice-98x5.onrender.com",
+                    "Host": "pollbuilder-poll-fhbp.onrender.com",
                     "Port": 443
                 }
             ],
@@ -31,7 +31,7 @@
             "DownstreamScheme": "https",
             "DownstreamHostAndPorts": [
                 {
-                    "Host": "pollbuilder-voteservice-nbjl.onrender.com",
+                    "Host": "pollbuilder-vote-vkxr.onrender.com",
                     "Port": 443
                 }
             ],
@@ -44,7 +44,7 @@
             "DownstreamScheme": "https",
             "DownstreamHostAndPorts": [
                 {
-                    "Host": "pollbuilder-voteservice-nbjl.onrender.com",
+                    "Host": "pollbuilder-vote-vkxr.onrender.com",
                     "Port": 443
                 }
             ],
@@ -81,7 +81,7 @@
             "DownstreamScheme": "https",
             "DownstreamHostAndPorts": [
                 {
-                    "Host": "pollbuilder-realtimeservice-fjhy.onrender.com",
+                    "Host": "pollbuilder-realtime-s3ye.onrender.com",
                     "Port": 443
                 }
             ],
@@ -91,6 +91,6 @@
         }
     ],
     "GlobalConfiguration": {
-        "BaseUrl": "https://pollbuilder-gateway-r33h.onrender.com"
+        "BaseUrl": "https://pollbuildergateway.onrender.com"
     }
 }
