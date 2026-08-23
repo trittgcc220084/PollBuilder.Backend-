@@ -1,0 +1,38 @@
+name: Backend CI
+
+on:
+  push:
+    branches:
+      - main
+      - dev
+      - 'feature/**'
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. Checkout mã nguồn
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      # 2. Cài đặt .NET SDK
+      - name: Setup .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x' # Đổi thành '9.0.x' nếu dự án bạn dùng .NET 9
+
+      # 3. Restore các NuGet Packages cho toàn bộ Solution
+      - name: Restore Dependencies
+        run: dotnet restore
+
+      # 4. Build toàn bộ dự án ở chế độ Release
+      - name: Build Solution
+        run: dotnet build --no-restore --configuration Release
+
+      # 5. Chạy toàn bộ Unit Tests (nếu có)
+      - name: Run Tests
+        run: dotnet test --no-build --configuration Release --verbosity normal
