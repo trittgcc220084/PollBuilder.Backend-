@@ -1,83 +1,83 @@
-using Microsoft.AspNetCore.Authorization; // Bổ sung
-using Microsoft.AspNetCore.Mvc;
-using System.Security.Claims;             // Bổ sung
+using System.Text.Json;
+using Microsoft.EntityFrameworkCore;
 using VoteService.Contracts;
-using VoteService.Services;
+using VoteService.Data;
+using VoteService.Models;
 
-namespace VoteService.Controllers
+namespace VoteService.Services
 {
-    [ApiController]
-    [Route("api/votes")]
-    public class VotesController(IVoteService votes, IConfiguration config) : ControllerBase
+    public class VoteService(AppDbContext db) : IVoteService
     {
-        private readonly IVoteService _votes = votes;
-        private readonly string _realtimeServiceUrl = config["REALTIME_SERVICE_URL"] ?? "http://pollbuilder-realtimeservice:8080";
+        private readonly AppDbContext _db = db;
 
-        [Authorize] // BẮT BUỘC NGƯỜI VOTE PHẢI ĐĂNG NHẬP
-        [HttpPost]
-        public async Task<ActionResult<PollResultsDto>> Vote([FromBody] VoteRequest request)
+        public async Task<VoteResultDto> VoteAsync(string code, int optionIndex, string voterToken)
         {
-            // 1. Lấy ID của người dùng từ Token (Thay vì dùng Cookie)
-            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            if (string.IsNullOrEmpty(userId))
+            Poll? poll = await _db.Polls
+                .Include(p => p.Votes)
+                .FirstOrDefaultAsync(p => p.Code == code);
+
+            
+            Console.WriteLine($">>> [VoteService] Code={code}, Found={poll != null}, IsClosed={poll?.IsClosed}, VotesCount={poll?.Votes?.Count}");
+            // =============================
+
+            if (poll is null)
             {
-                return Unauthorized(new { error = "Bạn cần đăng nhập để vote." });
+                throw new KeyNotFoundException("Poll not found.");
             }
 
-            try
+            if (poll.IsClosed)
             {
-                // 2. Truyền userId (dưới dạng string) vào hàm VoteAsync để lưu lịch sử
-                VoteResultDto result = await _votes.VoteAsync(request.PollCode, request.OptionIndex, userId);
-
-                Console.WriteLine($">>> [VOTE] Code={request.PollCode}, IsNewVote={result.IsNewVote}");
-
-                // Gửi thông báo realtime sang RealtimeService nếu là vote mới
-                if (result.IsNewVote)
-                {
-                    string notifyUrl = $"{_realtimeServiceUrl.TrimEnd('/')}/api/notify/vote";
-                    Console.WriteLine($">>> [REALTIME NOTIFY] Gửi tới: {notifyUrl}");
-
-                    try
-                    {
-                        using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(20) };
-
-                        var response = await http.PostAsJsonAsync(notifyUrl, new
-                        {
-                            Code = request.PollCode,
-                            result.Results
-                        });
-
-                        if (response.IsSuccessStatusCode)
-                        {
-                            Console.WriteLine($">>> [REALTIME NOTIFY] Thành công. Status: {(int)response.StatusCode}");
-                        }
-                        else
-                        {
-                            var body = await response.Content.ReadAsStringAsync();
-                            Console.WriteLine($"❌ [REALTIME NOTIFY] Thất bại. Status: {(int)response.StatusCode}, Body: {body}");
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        // ĐÃ THÊM LOG — trước đây bị nuốt hoàn toàn, không biết lý do thất bại
-                        Console.WriteLine($"❌ [REALTIME NOTIFY EXCEPTION] {ex.GetType().Name}: {ex.Message}");
-                    }
-                }
-
-                return Ok(result.Results);
+                throw new InvalidOperationException("Poll is closed.");
             }
-            catch (KeyNotFoundException)
+
+            List<string> options = JsonSerializer.Deserialize<List<string>>(poll.OptionsJson) ?? [];
+
+            if (optionIndex < 0 || optionIndex >= options.Count)
             {
-                return NotFound(new { error = "Poll not found." });
+                throw new ArgumentOutOfRangeException(nameof(optionIndex), "Invalid option.");
             }
-            catch (InvalidOperationException)
+
+            // Kiểm tra đã vote chưa 
+            bool alreadyVoted = poll.Votes.Any(v => v.VoterToken == voterToken);
+            if (alreadyVoted)
             {
-                return Conflict(new { error = "Poll is closed." });
+                // Trả về kết quả hiện tại, không tạo vote mới 
+                return new VoteResultDto(false, ToResults(poll, options));
             }
-            catch (ArgumentOutOfRangeException)
+
+            // Tạo vote mới 
+            var vote = new Vote
             {
-                return BadRequest(new { error = "Invalid option." });
-            }
+                Id = Guid.NewGuid(),
+                PollId = poll.Id,
+                OptionIndex = optionIndex,
+                VoterToken = voterToken,
+                CreatedAt = DateTime.UtcNow
+            };
+
+            _ = _db.Votes.Add(vote);
+            _ = await _db.SaveChangesAsync();
+
+            // Reload votes để đếm chính xác 
+            await _db.Entry(poll).Collection(p => p.Votes).LoadAsync();
+
+            return new VoteResultDto(true, ToResults(poll, options));
+        }
+
+        private static PollResultsDto ToResults(Poll poll, List<string> options)
+        {
+            var counts = options
+                .Select((_, index) => poll.Votes.Count(v => v.OptionIndex == index))
+                .ToList();
+
+            return new PollResultsDto(
+                poll.Code,
+                poll.Question,
+                [.. options.Select((text, i) => new PollOptionDto(i, text))],
+                counts,
+                counts.Sum(),
+                poll.IsClosed ? "closed" : "open"
+            );
         }
     }
 }

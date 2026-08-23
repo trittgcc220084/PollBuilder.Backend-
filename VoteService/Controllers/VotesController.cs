@@ -29,23 +29,38 @@ namespace VoteService.Controllers
                 // 2. Truyền userId (dưới dạng string) vào hàm VoteAsync để lưu lịch sử
                 VoteResultDto result = await _votes.VoteAsync(request.PollCode, request.OptionIndex, userId);
 
+                Console.WriteLine($">>> [VOTE] Code={request.PollCode}, IsNewVote={result.IsNewVote}");
+
                 // Gửi thông báo realtime sang RealtimeService nếu là vote mới
                 if (result.IsNewVote)
                 {
+                    string notifyUrl = $"{_realtimeServiceUrl.TrimEnd('/')}/api/notify/vote";
+                    Console.WriteLine($">>> [REALTIME NOTIFY] Gửi tới: {notifyUrl}");
+
                     try
                     {
-                        using var http = new HttpClient();
-                        string notifyUrl = $"{_realtimeServiceUrl.TrimEnd('/')}/api/notify/vote";
+                        using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(20) };
 
-                        _ = await http.PostAsJsonAsync(notifyUrl, new
+                        var response = await http.PostAsJsonAsync(notifyUrl, new
                         {
                             Code = request.PollCode,
                             result.Results
                         });
+
+                        if (response.IsSuccessStatusCode)
+                        {
+                            Console.WriteLine($">>> [REALTIME NOTIFY] Thành công. Status: {(int)response.StatusCode}");
+                        }
+                        else
+                        {
+                            var body = await response.Content.ReadAsStringAsync();
+                            Console.WriteLine($"❌ [REALTIME NOTIFY] Thất bại. Status: {(int)response.StatusCode}, Body: {body}");
+                        }
                     }
-                    catch
+                    catch (Exception ex)
                     {
-                        // Nếu RealtimeService chưa phản hồi thì bỏ qua
+                        // ĐÃ THÊM LOG — trước đây bị nuốt hoàn toàn, không biết lý do thất bại
+                        Console.WriteLine($"❌ [REALTIME NOTIFY EXCEPTION] {ex.GetType().Name}: {ex.Message}");
                     }
                 }
 
