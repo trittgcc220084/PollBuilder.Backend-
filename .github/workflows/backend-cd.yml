@@ -13,26 +13,29 @@ jobs:
     strategy:
       matrix:
         include:
+          # Thay đổi 'dir' bên dưới đúng với đường dẫn thư mục chứa Dockerfile trên repo của bạn
           - name: poll
-            context: backend/PollService.Api
+            dir: PollService.Api          # Hoặc 'backend/PollService.Api' nếu thực sự nằm trong folder backend
             image: pollbuilder-poll
             hook_secret: POLL_RENDER_DEPLOY_HOOK_URL
           - name: vote
-            context: backend/VoteService.Api
+            dir: VoteService.Api          # Hoặc 'backend/VoteService.Api'
             image: pollbuilder-vote
             hook_secret: VOTE_RENDER_DEPLOY_HOOK_URL
           - name: realtime
-            context: backend/RealtimeService.Api
+            dir: RealtimeService.Api      # Hoặc 'backend/RealtimeService.Api'
             image: pollbuilder-realtime
             hook_secret: REALTIME_RENDER_DEPLOY_HOOK_URL
           - name: gateway
-            context: backend/ApiGateway
+            dir: ApiGateway               # Hoặc 'backend/ApiGateway'
             image: pollbuilder-gateway
             hook_secret: GATEWAY_RENDER_DEPLOY_HOOK_URL
 
     steps:
       - uses: actions/checkout@v4
+
       - uses: docker/setup-buildx-action@v3
+
       - uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
@@ -41,7 +44,8 @@ jobs:
       - name: Build and push ${{ matrix.name }} image
         uses: docker/build-push-action@v6
         with:
-          context: ${{ matrix.context }}
+          context: .                       # Đặt context là root để tham chiếu toàn bộ solution
+          file: ./${{ matrix.dir }}/Dockerfile # Chỉ tới đúng file Dockerfile
           push: true
           tags: |
             ${{ secrets.DOCKER_USERNAME }}/${{ matrix.image }}:${{ github.sha }}
