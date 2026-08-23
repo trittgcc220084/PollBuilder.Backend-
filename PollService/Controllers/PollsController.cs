@@ -99,7 +99,7 @@ namespace PollService.Controllers
         // CHỈ CHỦ POLL MỚI ĐƯỢC XEM KẾT QUẢ REALTIME
         [Authorize]
         [HttpGet("{code:regex(^[[A-Z0-9]]{{6}}$)}/results")]
-        public async Task<ActionResult<PollResultsDto>> Results(string code)
+        public async Task<IActionResult> Results(string code)
         {
             if (!TryGetUserId(out var userId))
             {
@@ -114,10 +114,28 @@ namespace PollService.Controllers
                 return StatusCode(403, new { error = "Bạn không có quyền xem kết quả của Poll này!" });
             }
 
-            var results = await _polls.GetResultsAsync(code);
-            return results is null
-                ? NotFound(new { error = "Poll not found." })
-                : Ok(results);
+            // Số liệu vote THẬT chỉ nằm ở VoteService — PollService không lưu Votes
+            try
+            {
+                var baseUrl = (_config["VoteServiceUrl"] ?? "https://pollbuilder-voteservice.onrender.com").TrimEnd('/');
+                using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(15) };
+
+                var response = await http.GetAsync($"{baseUrl}/api/internal/polls/{code}/results");
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    Console.WriteLine($"❌ [RESULTS PROXY] VoteService trả về {response.StatusCode}");
+                    return StatusCode(502, new { error = "Không lấy được kết quả từ VoteService." });
+                }
+
+                var content = await response.Content.ReadAsStringAsync();
+                return Content(content, "application/json");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"❌ [RESULTS PROXY EXCEPTION] {ex.Message}");
+                return StatusCode(502, new { error = "Không thể kết nối tới VoteService." });
+            }
         }
 
         [Authorize]

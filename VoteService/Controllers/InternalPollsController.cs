@@ -45,6 +45,35 @@ namespace VoteService.Controllers
 
             return Ok(poll);
         }
+
+        // MỚI: PollService gọi endpoint này để lấy số liệu vote THẬT (vì vote chỉ được lưu ở VoteService)
+        [HttpGet("{code}/results")]
+        public async Task<IActionResult> GetResults(string code)
+        {
+            var poll = await _db.Polls
+                .Include(p => p.Votes)
+                .FirstOrDefaultAsync(p => p.Code == code);
+
+            if (poll is null)
+            {
+                return NotFound(new { error = "Poll not found in VoteService." });
+            }
+
+            var options = JsonSerializer.Deserialize<List<string>>(poll.OptionsJson) ?? new();
+            var counts = options
+                .Select((_, index) => poll.Votes.Count(v => v.OptionIndex == index))
+                .ToList();
+
+            return Ok(new
+            {
+                code = poll.Code,
+                question = poll.Question,
+                options = options.Select((text, i) => new { index = i, text }).ToList(),
+                counts,
+                totalVotes = counts.Sum(),
+                status = poll.IsClosed ? "closed" : "open"
+            });
+        }
     }
 
     public class CreateInternalPollDto
