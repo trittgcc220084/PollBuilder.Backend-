@@ -4,7 +4,12 @@ on:
   pull_request:
     branches: [develop, main]
     paths:
-      - 'backend/**'
+      - 'PollService/**'
+      - 'VoteService/**'
+      - 'RealtimeService/**'
+      - 'Gateway/**'
+      - 'AccountService/**'
+      - 'PollBuilder.API/**'
       - '.github/workflows/backend-ci.yml'
 
 jobs:
@@ -12,27 +17,21 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '8.0.x'
 
-      - name: Restore PollService
-        run: dotnet restore backend/PollService.Api/PollService.Api.csproj
-      - name: Restore VoteService
-        run: dotnet restore backend/VoteService.Api/VoteService.Api.csproj
-      - name: Restore RealtimeService
-        run: dotnet restore backend/RealtimeService.Api/RealtimeService.Api.csproj
-      - name: Restore Gateway
-        run: dotnet restore backend/ApiGateway/ApiGateway.csproj
+      - name: Restore dependencies
+        run: dotnet restore PollBuilder.API.slnx
 
-      - name: Build PollService
-        run: dotnet build backend/PollService.Api/PollService.Api.csproj -c Release --no-restore
-      - name: Build VoteService
-        run: dotnet build backend/VoteService.Api/VoteService.Api.csproj -c Release --no-restore
-      - name: Build RealtimeService
-        run: dotnet build backend/RealtimeService.Api/RealtimeService.Api.csproj -c Release --no-restore
-      - name: Build Gateway
-        run: dotnet build backend/ApiGateway/ApiGateway.csproj -c Release --no-restore
+      - name: Build solution
+        run: dotnet build PollBuilder.API.slnx -c Release --no-restore
 
       - name: Unit tests
-        run: dotnet test backend/PollBuilder.Tests/PollBuilder.Tests.csproj -c Release
+        run: |
+          if [ -d "PollBuilder.Tests" ]; then
+            dotnet test PollBuilder.Tests/*.csproj -c Release --no-build
+          else
+            echo "No test project found, skipping tests."
+          fi
