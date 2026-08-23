@@ -4,7 +4,11 @@ on:
   push:
     branches: [main]
     paths:
-      - 'backend/**'
+      - 'PollService/**'
+      - 'VoteService/**'
+      - 'RealtimeService/**'
+      - 'Gateway/**'
+      - 'PollBuilder.API/**'
       - '.github/workflows/backend-cd.yml'
 
 jobs:
@@ -13,21 +17,20 @@ jobs:
     strategy:
       matrix:
         include:
-          # Thay đổi 'dir' bên dưới đúng với đường dẫn thư mục chứa Dockerfile trên repo của bạn
           - name: poll
-            dir: PollService.Api          # Hoặc 'backend/PollService.Api' nếu thực sự nằm trong folder backend
+            dockerfile: PollService/Dockerfile
             image: pollbuilder-poll
             hook_secret: POLL_RENDER_DEPLOY_HOOK_URL
           - name: vote
-            dir: VoteService.Api          # Hoặc 'backend/VoteService.Api'
+            dockerfile: VoteService/Dockerfile
             image: pollbuilder-vote
             hook_secret: VOTE_RENDER_DEPLOY_HOOK_URL
           - name: realtime
-            dir: RealtimeService.Api      # Hoặc 'backend/RealtimeService.Api'
+            dockerfile: RealtimeService/Dockerfile
             image: pollbuilder-realtime
             hook_secret: REALTIME_RENDER_DEPLOY_HOOK_URL
           - name: gateway
-            dir: ApiGateway               # Hoặc 'backend/ApiGateway'
+            dockerfile: Gateway/Dockerfile
             image: pollbuilder-gateway
             hook_secret: GATEWAY_RENDER_DEPLOY_HOOK_URL
 
@@ -44,8 +47,8 @@ jobs:
       - name: Build and push ${{ matrix.name }} image
         uses: docker/build-push-action@v6
         with:
-          context: .                       # Đặt context là root để tham chiếu toàn bộ solution
-          file: ./${{ matrix.dir }}/Dockerfile # Chỉ tới đúng file Dockerfile
+          context: .
+          file: ${{ matrix.dockerfile }}
           push: true
           tags: |
             ${{ secrets.DOCKER_USERNAME }}/${{ matrix.image }}:${{ github.sha }}
