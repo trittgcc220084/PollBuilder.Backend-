@@ -3,20 +3,27 @@ name: Backend CD
 on:
   push:
     branches:
-      - main # Hoặc 'master' tùy tên nhánh chính của bạn
+      - main
 
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false # 1 service lỗi sẽ không làm dừng các service khác
       matrix:
-        service:
-          - AccountService
-          - Gateway
-          - PollBuilder.API
-          - PollService
-          - RealtimeService
-          - VoteService
+        include:
+          - folder: PollBuilder.API
+            image: pollbuilder-api
+          - folder: AccountService
+            image: pollbuilder-accountservice
+          - folder: Gateway
+            image: pollbuilder-gateway
+          - folder: PollService
+            image: pollbuilder-pollservice
+          - folder: RealtimeService
+            image: pollbuilder-realtimeservice
+          - folder: VoteService
+            image: pollbuilder-voteservice
 
     steps:
       - name: Checkout Repository
@@ -31,12 +38,12 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Build and push Docker image for ${{ matrix.service }}
+      - name: Build and push Docker image for ${{ matrix.folder }}
         uses: docker/build-push-action@v6
         with:
           context: .
-          file: ./${{ matrix.service }}/Dockerfile
+          file: ./${{ matrix.folder }}/Dockerfile
           push: true
           tags: |
-            ${{ secrets.DOCKER_USERNAME }}/pollbuilder-${{ matrix.service }}:latest
-            ${{ secrets.DOCKER_USERNAME }}/pollbuilder-${{ matrix.service }}:${{ github.sha }}
+            ${{ secrets.DOCKER_USERNAME }}/${{ matrix.image }}:latest
+            ${{ secrets.DOCKER_USERNAME }}/${{ matrix.image }}:${{ github.sha }}
