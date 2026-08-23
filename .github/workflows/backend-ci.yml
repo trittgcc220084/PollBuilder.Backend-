@@ -1,38 +1,38 @@
 name: Backend CI
 
 on:
-  push:
-    branches:
-      - main
-      - dev
-      - 'feature/**'
   pull_request:
-    branches:
-      - main
+    branches: [develop, main]
+    paths:
+      - 'backend/**'
+      - '.github/workflows/backend-ci.yml'
 
 jobs:
-  build-and-test:
+  build-test:
     runs-on: ubuntu-latest
-
     steps:
-      # 1. Checkout mã nguồn
-      - name: Checkout Repository
-        uses: actions/checkout@v4
-
-      # 2. Cài đặt .NET SDK
-      - name: Setup .NET SDK
-        uses: actions/setup-dotnet@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: '8.0.x' # Đổi thành '9.0.x' nếu dự án bạn dùng .NET 9
+          dotnet-version: '8.0.x'
 
-      # 3. Restore các NuGet Packages cho toàn bộ Solution
-      - name: Restore Dependencies
-        run: dotnet restore
+      - name: Restore PollService
+        run: dotnet restore backend/PollService.Api/PollService.Api.csproj
+      - name: Restore VoteService
+        run: dotnet restore backend/VoteService.Api/VoteService.Api.csproj
+      - name: Restore RealtimeService
+        run: dotnet restore backend/RealtimeService.Api/RealtimeService.Api.csproj
+      - name: Restore Gateway
+        run: dotnet restore backend/ApiGateway/ApiGateway.csproj
 
-      # 4. Build toàn bộ dự án ở chế độ Release
-      - name: Build Solution
-        run: dotnet build --no-restore --configuration Release
+      - name: Build PollService
+        run: dotnet build backend/PollService.Api/PollService.Api.csproj -c Release --no-restore
+      - name: Build VoteService
+        run: dotnet build backend/VoteService.Api/VoteService.Api.csproj -c Release --no-restore
+      - name: Build RealtimeService
+        run: dotnet build backend/RealtimeService.Api/RealtimeService.Api.csproj -c Release --no-restore
+      - name: Build Gateway
+        run: dotnet build backend/ApiGateway/ApiGateway.csproj -c Release --no-restore
 
-      # 5. Chạy toàn bộ Unit Tests (nếu có)
-      - name: Run Tests
-        run: dotnet test --no-build --configuration Release --verbosity normal
+      - name: Unit tests
+        run: dotnet test backend/PollBuilder.Tests/PollBuilder.Tests.csproj -c Release
