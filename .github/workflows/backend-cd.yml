@@ -21,25 +21,25 @@ jobs:
 
       - name: Debug secrets (temporary — remove after fixing)
         env:
-          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
-          DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+          DOCKERHUB_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+          DOCKERHUB_TOKEN: ${{ secrets.DOCKER_TOKEN }}
         run: |
-          if [ -z "$DOCKERHUB_USERNAME" ]; then
-            echo "DOCKERHUB_USERNAME is EMPTY or missing"
+          if [ -z "$DOCKER_USERNAME" ]; then
+            echo "DOCKER_USERNAME is EMPTY or missing"
           else
-            echo "DOCKERHUB_USERNAME is set (length: ${#DOCKERHUB_USERNAME})"
+            echo "DOCKER_USERNAME is set (length: ${#DOCKER_USERNAME})"
           fi
-          if [ -z "$DOCKERHUB_TOKEN" ]; then
-            echo "DOCKERHUB_TOKEN is EMPTY or missing"
+          if [ -z "$DOCKER_TOKEN" ]; then
+            echo "DOCKER_TOKEN is EMPTY or missing"
           else
-            echo "DOCKERHUB_TOKEN is set (length: ${#DOCKERHUB_TOKEN})"
+            echo "DOCKER_TOKEN is set (length: ${#DOCKER_TOKEN})"
           fi
 
       - name: Log in to Docker Hub
         uses: docker/login-action@v3
         with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_TOKEN }}
 
       - name: Build and push Docker image
         uses: docker/build-push-action@v6
@@ -49,8 +49,8 @@ jobs:
           file: ./Dockerfile
           push: true
           tags: |
-            ${{ secrets.DOCKERHUB_USERNAME }}/pollbuilder-backend:latest
-            ${{ secrets.DOCKERHUB_USERNAME }}/pollbuilder-backend:${{ github.event.workflow_run.head_sha }}
+            ${{ secrets.DOCKER_USERNAME }}/pollbuilder-backend:latest
+            ${{ secrets.DOCKER_USERNAME }}/pollbuilder-backend:${{ github.event.workflow_run.head_sha }}
 
   deploy:
     needs: docker-build-and-push
