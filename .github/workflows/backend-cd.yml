@@ -1,51 +1,36 @@
 name: CD
 
-# Runs only after the "CI" workflow finishes successfully on main.
-# This guarantees we never build/deploy an image that failed tests.
 on:
   workflow_run:
-    workflows: ["CI"]
-    types: [completed]
-    branches: [main]
+    workflows:
+      - CI
+    types:
+      - completed
+    branches:
+      - main
 
 jobs:
   docker-build-and-push:
-    runs-on: ubuntu-latest
+    name: Build and Push Docker Image
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
+      - name: Checkout code at CI head SHA
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event.workflow_run.head_sha }}
-
-      - name: Debug secrets (temporary — remove after fixing)
-        env:
-          DOCKERHUB_USERNAME: ${{ secrets.DOCKER_USERNAME }}
-          DOCKERHUB_TOKEN: ${{ secrets.DOCKER_TOKEN }}
-        run: |
-          if [ -z "$DOCKER_USERNAME" ]; then
-            echo "DOCKER_USERNAME is EMPTY or missing"
-          else
-            echo "DOCKER_USERNAME is set (length: ${#DOCKER_USERNAME})"
-          fi
-          if [ -z "$DOCKER_TOKEN" ]; then
-            echo "DOCKER_TOKEN is EMPTY or missing"
-          else
-            echo "DOCKER_TOKEN is set (length: ${#DOCKER_TOKEN})"
-          fi
 
       - name: Log in to Docker Hub
         uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
-          password: ${{ secrets.DOCKER_TOKEN }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
 
       - name: Build and push Docker image
         uses: docker/build-push-action@v6
         with:
           context: .
-          # Adjust this path if your Dockerfile is not at the repo root
           file: ./Dockerfile
           push: true
           tags: |
@@ -53,9 +38,11 @@ jobs:
             ${{ secrets.DOCKER_USERNAME }}/pollbuilder-backend:${{ github.event.workflow_run.head_sha }}
 
   deploy:
+    name: Trigger Render Deploy
     needs: docker-build-and-push
     runs-on: ubuntu-latest
 
     steps:
-      - name: Trigger Render deploy
-        run: curl -X POST "${{ secrets.RENDER_DEPLOY_HOOK_URL }}"
+      - name: Trigger Render deploy hook
+        run: |
+          curl -X POST "${{ secrets.RENDER_DEPLOY_HOOK_URL }}"
