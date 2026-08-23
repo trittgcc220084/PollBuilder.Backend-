@@ -64,12 +64,12 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         {
             OnAuthenticationFailed = context =>
             {
-                Console.WriteLine($"❌ [JWT ERROR]: Auth thất bại -> {context.Exception.Message}");
+                Console.WriteLine($"❌ [JWT ERROR]: Authentication failed -> {context.Exception.Message}");
                 return Task.CompletedTask;
             },
             OnChallenge = context =>
             {
-                Console.WriteLine($"⚠️ [JWT CHALLENGE]: Request bị từ chối (401) -> Error: {context.Error}, Description: {context.ErrorDescription}");
+                Console.WriteLine($"⚠️ [JWT CHALLENGE]: Request rejected (401) -> Error: {context.Error}, Description: {context.ErrorDescription}");
                 return Task.CompletedTask;
             }
         };
@@ -86,11 +86,11 @@ using (var scope = app.Services.CreateScope())
     {
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         db.Database.EnsureCreated();
-        Console.WriteLine("✅ Hệ thống kiểm tra Database (PollService) thành công.");
+        Console.WriteLine("✅ Database testing system(PollService) success.");
     }
     catch (Exception ex)
     {
-        Console.WriteLine($"⚠️ Cảnh báo khởi tạo cấu trúc DB (PollService): {ex.Message}");
+        Console.WriteLine($"⚠️ Database structure initialization warning (PollService): {ex.Message}");
     }
 }
 
