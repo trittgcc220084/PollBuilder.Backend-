@@ -54,12 +54,12 @@ using (var scope = app.Services.CreateScope())
         var db = scope.ServiceProvider.GetRequiredService<AccountDbContext>();
         // EnsureCreated sẽ kiểm tra nhẹ nhàng và tạo bảng nếu chưa có, không gây xung đột với cổng Pooler
         db.Database.EnsureCreated();
-        Console.WriteLine("✅ Hệ thống kiểm tra Database thành công.");
+        Console.WriteLine("✅ Database check system successful.");
     }
     catch (Exception ex)
     {
         // Ghi log để theo dõi nhưng không làm sập tiến trình khởi động của Web Service
-        Console.WriteLine($"⚠️ Cảnh báo khởi tạo cấu trúc DB: {ex.Message}");
+        Console.WriteLine($"⚠️ Database structure initialization warning: {ex.Message}");
     }
 }
 
