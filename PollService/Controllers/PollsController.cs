@@ -20,18 +20,16 @@ namespace PollService.Controllers
             _config = config;
         }
 
-        // Hàm phụ lấy UserId an toàn (hỗ trợ cả nameid, sub, và ClaimTypes)
         private bool TryGetUserId(out Guid userId)
         {
             userId = Guid.Empty;
-            var claim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value 
-                     ?? User.FindFirst("nameid")?.Value 
+            var claim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                     ?? User.FindFirst("nameid")?.Value
                      ?? User.FindFirst("sub")?.Value;
 
             return !string.IsNullOrEmpty(claim) && Guid.TryParse(claim, out userId);
         }
 
-        // TẠO POLL
         [Authorize]
         [HttpPost]
         public async Task<ActionResult<PollDto>> Create([FromBody] CreatePollRequest request)
@@ -45,7 +43,6 @@ namespace PollService.Controllers
             {
                 var poll = await _polls.CreatePollAsync(request.Question, request.Options, userId);
 
-                // Đồng bộ poll mới sang VoteService
                 try
                 {
                     var baseUrl = (_config["VoteServiceUrl"] ?? "https://pollbuilder-voteservice.onrender.com").TrimEnd('/');
@@ -77,7 +74,6 @@ namespace PollService.Controllers
             }
         }
 
-        // LỊCH SỬ POLL CỦA TÔI
         [Authorize]
         [HttpGet("my-polls")]
         public async Task<ActionResult<IEnumerable<PollDto>>> GetMyPolls()
@@ -91,7 +87,6 @@ namespace PollService.Controllers
             return Ok(myPolls);
         }
 
-        // LẤY 1 POLL THEO MÃ (chỉ mã 6 ký tự A-Z0-9)
         [HttpGet("{code:regex(^[[A-Z0-9]]{{6}}$)}")]
         public async Task<ActionResult<PollDto>> Get(string code)
         {
@@ -101,16 +96,30 @@ namespace PollService.Controllers
                 : Ok(poll);
         }
 
+        // CHỈ CHỦ POLL MỚI ĐƯỢC XEM KẾT QUẢ REALTIME
+        [Authorize]
         [HttpGet("{code:regex(^[[A-Z0-9]]{{6}}$)}/results")]
         public async Task<ActionResult<PollResultsDto>> Results(string code)
         {
+            if (!TryGetUserId(out var userId))
+            {
+                return Unauthorized(new { error = "Không xác định được người dùng." });
+            }
+
+            var pollCheck = await _polls.GetPollAsync(code);
+            if (pollCheck == null) return NotFound(new { error = "Poll not found." });
+
+            if (pollCheck.CreatorId != userId)
+            {
+                return StatusCode(403, new { error = "Bạn không có quyền xem kết quả của Poll này!" });
+            }
+
             var results = await _polls.GetResultsAsync(code);
             return results is null
                 ? NotFound(new { error = "Poll not found." })
                 : Ok(results);
         }
 
-        // ĐÓNG POLL
         [Authorize]
         [HttpPatch("{code:regex(^[[A-Z0-9]]{{6}}$)}/close")]
         public async Task<ActionResult<PollDto>> Close(string code)
