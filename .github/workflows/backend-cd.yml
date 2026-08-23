@@ -19,6 +19,22 @@ jobs:
         with:
           ref: ${{ github.event.workflow_run.head_sha }}
 
+      - name: Debug secrets (temporary — remove after fixing)
+        env:
+          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+          DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+        run: |
+          if [ -z "$DOCKERHUB_USERNAME" ]; then
+            echo "DOCKERHUB_USERNAME is EMPTY or missing"
+          else
+            echo "DOCKERHUB_USERNAME is set (length: ${#DOCKERHUB_USERNAME})"
+          fi
+          if [ -z "$DOCKERHUB_TOKEN" ]; then
+            echo "DOCKERHUB_TOKEN is EMPTY or missing"
+          else
+            echo "DOCKERHUB_TOKEN is set (length: ${#DOCKERHUB_TOKEN})"
+          fi
+
       - name: Log in to Docker Hub
         uses: docker/login-action@v3
         with:
